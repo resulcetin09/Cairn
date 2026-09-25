@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Environment files
+.env*
+
+# Build artifacts
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Keys & Certificates
+*.pem
+*.key
+*.p12
+*.pfx
+
+# OpenAI hosting config (contains project ID)
+**/.openai/
+
+# Impeccable internal design docs & review assets
+**/.impeccable/
