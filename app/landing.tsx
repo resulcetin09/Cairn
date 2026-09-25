@@ -23,6 +23,11 @@ import {
   LogOut,
   ExternalLink,
   ShieldAlert,
+  Terminal,
+  Play,
+  CheckCircle2,
+  XCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +35,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { initialCampaign, contributionError, contribute, target } from './campaign';
 import { useWallet } from './wallet-context';
+import {
+  runAutomatedSuccessScenario,
+  runLaceWalletRefundScenario,
+  type TestStepLog,
+} from '../contract/contract-test';
 
 const money = (cents: number) =>
   new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(cents / 100);
@@ -589,6 +599,210 @@ function Demo() {
   );
 }
 
+function ContractTestLab() {
+  const { isConnected, shieldedAddress, unshieldedAddress, formatAddress, connect } = useWallet();
+  const [scenario, setScenario] = useState<'wallet' | 'automated'>('wallet');
+  const [running, setRunning] = useState(false);
+  const [logs, setLogs] = useState<TestStepLog[]>([]);
+  const [testResult, setTestResult] = useState<'idle' | 'success' | 'failed'>('idle');
+
+  const activeWallet = shieldedAddress || unshieldedAddress;
+
+  async function handleRunTest() {
+    setRunning(true);
+    setLogs([]);
+    setTestResult('idle');
+
+    // Gerçekçi animasyon için adımları tek tek gecikmeli basalım
+    if (scenario === 'wallet') {
+      const walletToUse = activeWallet || 'midnight1_lace_shielded_test_wallet_777';
+      const result = await runLaceWalletRefundScenario(walletToUse);
+      
+      for (let i = 0; i < result.logs.length; i++) {
+        await new Promise((r) => setTimeout(r, 450));
+        setLogs((prev) => [...prev, result.logs[i]]);
+      }
+      setTestResult(result.success ? 'success' : 'failed');
+    } else {
+      const result = await runAutomatedSuccessScenario();
+      for (let i = 0; i < result.logs.length; i++) {
+        await new Promise((r) => setTimeout(r, 380));
+        setLogs((prev) => [...prev, result.logs[i]]);
+      }
+      setTestResult(result.success ? 'success' : 'failed');
+    }
+
+    setRunning(false);
+  }
+
+  return (
+    <section id="test-lab" className="test-lab-section section-wrap">
+      <div className="test-lab-header">
+        <div className="test-lab-title">
+          <Terminal className="w-5 h-5 text-primary" />
+          <h3>Midnight Compact ZK Sözleşme Test Laboratuvarı</h3>
+        </div>
+        <span className="test-lab-badge">Compact Smart Contract v0.14</span>
+      </div>
+
+      <div className="test-lab-box">
+        <div className="test-controls-bar">
+          <div className="test-scenario-selector">
+            <button
+              type="button"
+              className={`test-tab-btn ${scenario === 'wallet' ? 'active' : ''}`}
+              onClick={() => {
+                setScenario('wallet');
+                setLogs([]);
+                setTestResult('idle');
+              }}
+            >
+              <Wallet className="w-4 h-4" />
+              Senaryo 2: Kendi Lace Cüzdanınla ZK İade Testi
+            </button>
+            <button
+              type="button"
+              className={`test-tab-btn ${scenario === 'automated' ? 'active' : ''}`}
+              onClick={() => {
+                setScenario('automated');
+                setLogs([]);
+                setTestResult('idle');
+              }}
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              Senaryo 1: Otomatik Hedef Tamamlama & Payout
+            </button>
+          </div>
+
+          <div className="test-action-group">
+            {scenario === 'wallet' && !isConnected && (
+              <button type="button" className="test-connect-hint-btn" onClick={connect}>
+                <Wallet className="w-3.5 h-3.5" />
+                Lace Cüzdanını Bağla
+              </button>
+            )}
+            <Button
+              className="run-test-btn"
+              disabled={running}
+              onClick={handleRunTest}
+            >
+              {running ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin mr-1.5" />
+                  Devreler Doğrulanıyor...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-1.5" />
+                  Testi Başlat
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {scenario === 'wallet' && (
+          <div className="test-wallet-info-bar">
+            <span>
+              Testte Kullanılacak Kimlik:{' '}
+              {isConnected ? (
+                <strong className="text-primary font-mono">
+                  {formatAddress(activeWallet)} (Bağlı Lace Cüzdanın)
+                </strong>
+              ) : (
+                <em className="text-muted-foreground font-mono">
+                  Lace bağlı değilse test adres simülatörü kullanılır
+                </em>
+              )}
+            </span>
+          </div>
+        )}
+
+        {/* Konsol Çıktı Ekranı */}
+        <div className="test-terminal-window">
+          <div className="test-terminal-top">
+            <div className="terminal-dots">
+              <span className="dot-red" />
+              <span className="dot-yellow" />
+              <span className="dot-green" />
+            </div>
+            <span className="terminal-title">cairn.compact · Execution Console</span>
+            <span className="terminal-network">Midnight Preprod</span>
+          </div>
+
+          <div className="test-terminal-body">
+            {logs.length === 0 && !running && (
+              <div className="terminal-placeholder">
+                <Terminal className="w-8 h-8 opacity-40 mb-2" />
+                <p>Testi başlatmak için yukarıdaki <strong>"Testi Başlat"</strong> butonuna basın.</p>
+                <small className="opacity-60">
+                  {scenario === 'wallet'
+                    ? 'Kendi Lace cüzdanın ile ZK commitment üretilecek, All-or-Nothing süre dolumu simüle edilecek ve kimliğin gizli kalarak Nullifier ile paran iade alınacaktır.'
+                    : 'Otomatik olarak 3 katılımcı ile fonlama yapılacak, hedef %100 tamamlanacak ve organizatör payout devresi çalıştırılacaktır.'}
+                </small>
+              </div>
+            )}
+
+            {logs.map((log) => (
+              <div key={log.step} className={`terminal-log-entry status-${log.status}`}>
+                <div className="log-line-header">
+                  <span className="log-step-tag">[ADIM {log.step}]</span>
+                  <span className="log-title">{log.title}</span>
+                  <span className="log-status-badge">
+                    {log.status === 'success' ? 'BAŞARILI' : 'HATA'}
+                  </span>
+                </div>
+                <div className="log-detail-text">└─ {log.detail}</div>
+                {log.data && (
+                  <div className="log-data-box">
+                    {Boolean(log.data.commitment) && (
+                      <div>
+                        <span className="data-key">ZK Commitment:</span>{' '}
+                        <span className="data-val font-mono">{log.data.commitment}</span>
+                      </div>
+                    )}
+                    {Boolean(log.data.salt) && (
+                      <div>
+                        <span className="data-key">Private Salt (Secret):</span>{' '}
+                        <span className="data-val font-mono">{log.data.salt}</span>
+                      </div>
+                    )}
+                    {Boolean(log.data.nullifier) && (
+                      <div>
+                        <span className="data-key">Nullifier Hash:</span>{' '}
+                        <span className="data-val font-mono">{log.data.nullifier}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {running && (
+              <div className="terminal-running-indicator">
+                <span className="cursor-blink">▋</span> Zero-Knowledge Compact kanıtı oluşturuluyor...
+              </div>
+            )}
+
+            {testResult === 'success' && (
+              <div className="terminal-summary success">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <span>TEBRİKLER: Tüm ZK devreleri ve akıllı sözleşme kuralları başarıyla doğrulandı!</span>
+              </div>
+            )}
+            {testResult === 'failed' && (
+              <div className="terminal-summary failed">
+                <XCircle className="w-5 h-5 text-rose-400" />
+                <span>Test adımlarından biri başarısız oldu. Logları inceleyin.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function Landing() {
   const [menu, setMenu] = useState(false);
 
@@ -602,6 +816,9 @@ export function Landing() {
         <nav aria-label="Ana gezinme" className={menu ? 'nav-links is-open' : 'nav-links'}>
           <a href="#how" onClick={() => setMenu(false)}>
             Nasıl çalışır?
+          </a>
+          <a href="#test-lab" onClick={() => setMenu(false)}>
+            Sözleşme Testi
           </a>
           <a href="#privacy" onClick={() => setMenu(false)}>
             Gizlilik
@@ -683,6 +900,7 @@ export function Landing() {
         </div>
 
         <Demo />
+        <ContractTestLab />
 
         <section id="how" className="how-section section-wrap">
           <div className="section-heading">

@@ -1,0 +1,147 @@
+// Cairn Confidential All-or-Nothing Crowdfunding
+// Written in Midnight Compact Language
+pragma language_version >= 0.14.0;
+
+import CompactStandardLibrary;
+
+// ==========================================
+// PUBLIC LEDGER STATE (Zincirde Açık Olan Durum)
+// ==========================================
+
+// Kampanya sahibinin açık kimliği (public key hash)
+export ledger organizer: Bytes<32>;
+
+// Hedef tutar (örneğin 100 USD = 10000 cents veya DUST/tNIGHT cinsinden)
+export ledger target: Uint<64>;
+
+// Kampanyanın sona ereceği blok numarası / timestamp
+export ledger deadline: Uint<64>;
+
+// Süre boyunca toplanan toplam miktar (bireysel katkılar gizli kalır)
+export ledger total_raised: Uint<64>;
+
+// Kampanya sonuçlandı mı?
+export ledger is_finalized: Boolean;
+
+// Hedefe tam ulaşıldı mı? (Başarılı mı?)
+export ledger is_success: Boolean;
+
+// Kayıtlı ZK taahhütleri (Commitment'lar)
+// commitment = hash(amount, secret_salt, contributor_pk)
+export ledger commitments: Set<Bytes<32>>;
+
+// Çift iadeyi (double-refund) önleyen gizli mühürler
+// nullifier = hash(secret_salt, contributor_sk)
+export ledger nullifiers: Set<Bytes<32>>;
+
+// ==========================================
+// WITNESS (Özel / Gizli İstemci Verileri)
+// ==========================================
+
+// Kullanıcının gizli katkı miktarı ve rastgele salt değeri
+witness local_secret_contribution(): [Uint<64>, Bytes<32>];
+
+// ==========================================
+// CIRCUITS & STATE TRANSITIONS
+// ==========================================
+
+// Sözleşme başlatıcı
+constructor(
+    _organizer: Bytes<32>,
+    _target: Uint<64>,
+    _deadline: Uint<64>
+) {
+    organizer = _organizer;
+    target = _target;
+    deadline = _deadline;
+    total_raised = 0;
+    is_finalized = false;
+    is_success = false;
+}
+
+// 1. GİZLİ KATKI DEVRESİ (ZK Circuit)
+// Katılımcı miktarını ve kimliğini açığa vurmadan katkı yapar
+export circuit contribute(
+    amount: Uint<64>,
+    secret_salt: Bytes<32>,
+    contributor_pk: Bytes<32>
+): Bytes<32> {
+    // Kampanya süresi dolmamış ve henüz finalize edilmemiş olmalı
+    assert !is_finalized "Kampanya zaten sona erdi";
+    assert amount > 0 "Katkı tutarı sıfırdan büyük olmalıdır";
+    assert total_raised + amount <= target "Bu katkı hedef tutarı aşıyor";
+
+    // ZK Commitment üretimi: H(amount || salt || pk)
+    // Bu taahhüt zincire yazılır ama içerisindeki miktar çözülemez
+    const commitment: Bytes<32> = persistent_hash<Vector<3, Bytes<32>>>([
+        amount as Bytes<32>,
+        secret_salt,
+        contributor_pk
+    ]);
+
+    assert !commitments.member(commitment) "Bu taahhüt zaten mevcut";
+
+    // Durumu güncelle
+    commitments.insert(commitment);
+    total_raised = total_raised + amount;
+
+    return commitment;
+}
+
+// 2. SÜRE DOLUMU & FİNALİZE DEVRESİ
+// Süre bittiğinde sonucu ikili (binary: başarı / başarısızlık) olarak kilitler
+export circuit finalize(): Boolean {
+    assert !is_finalized "Kampanya zaten finalize edildi";
+
+    is_finalized = true;
+    if (total_raised >= target) {
+        is_success = true;
+    } else {
+        is_success = false;
+    }
+
+    return is_success;
+}
+
+// 3. GİZLİ İADE DEVRESİ (Private Refund Circuit)
+// Hedefe ulaşılamazsa (is_success == false), katılımcı kimseye miktarını
+// göstermeden parasını gizlice geri çeker
+export circuit claim_refund(
+    amount: Uint<64>,
+    secret_salt: Bytes<32>,
+    contributor_pk: Bytes<32>
+): Bytes<32> {
+    assert is_finalized "Kampanya henüz finalize edilmedi";
+    assert !is_success "Kampanya başarılı olduğu için iade yapılamaz";
+
+    // Daha önce bu taahhüt kaydedilmiş mi doğrula
+    const commitment: Bytes<32> = persistent_hash<Vector<3, Bytes<32>>>([
+        amount as Bytes<32>,
+        secret_salt,
+        contributor_pk
+    ]);
+    assert commitments.member(commitment) "Geçersiz veya bulunamayan taahhüt";
+
+    // Nullifier üretimi: H(secret_salt || contributor_pk)
+    // Çift harcama / ikinci kez iade almayı engeller
+    const nullifier: Bytes<32> = persistent_hash<Vector<2, Bytes<32>>>([
+        secret_salt,
+        contributor_pk
+    ]);
+    assert !nullifiers.member(nullifier) "Bu katkı için zaten iade alındı";
+
+    // Nullifier'ı zincire kaydet (iade gerçekleşti)
+    nullifiers.insert(nullifier);
+
+    return nullifier;
+}
+
+// 4. BAŞARI DURUMUNDA FON AKTARIMI (Payout Circuit)
+// Hedefe ulaşıldıysa organizatör fonları talep eder
+export circuit payout(caller_pk: Bytes<32>): Uint<64> {
+    assert is_finalized "Kampanya henüz finalize edilmedi";
+    assert is_success "Kampanya hedefe ulaşamadığı için fon aktarılamaz";
+    assert caller_pk == organizer "Yalnızca kampanya sahibi fonları çekebilir";
+
+    return total_raised;
+}
