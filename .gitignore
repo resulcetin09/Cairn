@@ -16,6 +16,7 @@ node_modules/
 
 # Build & Cache
 *.tsbuildinfo
+next-env.d.ts
 /dist/
 /out/
 /.next/
