@@ -1,19 +1,26 @@
 # macOS
 .DS_Store
 
-# Node
+# Dependencies
 node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # Environment files
 .env*
 
-# Build artifacts
+# Build & Cache
 *.tsbuildinfo
-
-# IDE
-.idea/
-.vscode/
-*.swp
+/dist/
+/out/
+/.next/
+/.vinext/
+/coverage/
 
 # Keys & Certificates
 *.pem
@@ -21,8 +28,26 @@ node_modules/
 *.p12
 *.pfx
 
-# OpenAI hosting config (contains project ID)
-**/.openai/
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# Impeccable internal design docs & review assets
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Vercel
+.vercel
+
+# Cloudflare / Wrangler
+/.wrangler/
+/.sites-runtime/
+
+# OpenAI & tooling
+**/.openai/
 **/.impeccable/
+/.agents/
+/.codex/

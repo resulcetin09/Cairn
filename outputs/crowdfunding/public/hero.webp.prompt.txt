@@ -1,8 +1,0 @@
-Use case: stylized-concept
-Asset type: square 1024x1024 right-side landing page hero editorial sculpture for confidential all-or-nothing crowdfunding.
-Scene/backdrop: seamless dark graphite studio background #121918.
-Subject: one premium 3D sculptural ring constructed of many tightly stacked opaque and frosted smoky silver rectangular layers, forming a continuous toroidal vault or seal. A small muted emerald portion of the layered ring illustrates private contributions coalescing.
-Style/medium: sophisticated industrial object photography, physically believable premium 3D sculpture with restrained silver reflections.
-Composition/framing: large ring in three-quarter perspective occupying most of square image; the entire ring visible with ample dark margins.
-Lighting/mood: dramatic yet soft studio lighting, subtle shadows, calm and confidential.
-Constraints: no text, no brand name, no logo, no interface, no floating badges, no padlock cliché, no purple, no extra objects.
