@@ -613,12 +613,6 @@ export function Landing() {
         <div className="nav-actions">
           <ThemeToggle />
           <HeaderWalletButton />
-          <Button asChild className="nav-cta" variant="outline">
-            <a href="#demo">
-              Demoyu dene
-              <ArrowUpRight />
-            </a>
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -646,7 +640,7 @@ export function Landing() {
             <div className="hero-actions">
               <Button asChild className="primary-cta">
                 <a href="#demo">
-                  Demoyu dene
+                  Kampanyaya Katıl
                   <ArrowUpRight />
                 </a>
               </Button>
@@ -782,7 +776,7 @@ export function Landing() {
           RiseIn Moonshots Hackathon
         </span>
         <a className="text-link" href="#demo">
-          Demoyu dene
+          Kampanyaya Katıl
           <ArrowUpRight />
         </a>
       </footer>
