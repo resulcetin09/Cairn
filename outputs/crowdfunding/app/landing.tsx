@@ -1,0 +1,97 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowUpRight, ArrowRight, Check, ChevronRight, Eye, EyeOff, LockKeyhole, ShieldCheck, Timer, RotateCcw, Sun, Moon, Menu, X, CircleCheck, Undo2, Layers3 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { initialCampaign, contributionError, contribute, target } from './campaign';
+
+const money = (cents: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(cents / 100);
+const faqs = [
+ ['Katkı miktarımı kim görebilir?', 'Önerilen protokolde yalnızca sen. Katkı tutarı bir ZK commitment ile temsil edilir; herkese açık görünümde bireysel tutarlar veya katkı sahibi listesi bulunmaz. Bu sayfadaki demo, bu ayrımı arayüzde simüle eder.'],
+ ['Hedefe ulaşılamazsa ne olur?', 'Süre dolduğunda hedef tamamlanmamışsa kampanya başarısız olur ve herkes kendi katkısını gizli olarak geri alır. Demo, kişisel iade sonucunu otomatik gösterir; gerçek para hareketi gerçekleştirmez.'],
+ ['Hedef aşılabilir mi?', 'Bu tasarımda hayır. Toplam katkının hedefi aşmasına yol açan işlem kabul edilmez. Hedef erken tamamlanırsa yeni katkılar kapanır; sonuç belirlenen sürenin sonunda açıklanır.'],
+ ['Bu demoda gerçek para kullanılıyor mu?', 'Hayır. Tüm tutarlar örnektir ve yalnızca açık tarayıcı oturumunda tutulur. Cüzdan bağlantısı, akıllı sözleşme, gerçek ZK kanıtı veya ödeme işlemi yoktur. Sayfayı yenilediğinde demo sıfırlanır.'],
+ ['Yüzde gösterimi tam gizlilik sağlar mı?', 'Tek başına sağlamaz. Yüzdedeki değişimler, özellikle az katılımcılı kampanyalarda, katkılar hakkında çıkarım yapılmasına izin verebilir. Gerçek protokolde toplu ve yuvarlanmış ilerleme güncellemeleri gibi önlemler ayrıca tasarlanmalıdır.'],
+];
+function Brand() { return <a className="brand" href="#" aria-label="Cairn ana sayfa"><Layers3 aria-hidden="true"/><span>cairn<span className="brand-period">.</span></span></a> }
+function ThemeToggle() {
+ const [dark, setDark] = useState(false);
+ useEffect(() => { const query = matchMedia('(prefers-color-scheme: dark)'); const sync = () => setDark(document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : query.matches); sync(); query.addEventListener('change', sync); return () => query.removeEventListener('change', sync); }, []);
+ return <Button variant="ghost" size="icon" className="theme-toggle" aria-label={dark ? 'Açık temaya geç' : 'Koyu temaya geç'} onClick={() => { const next = !dark; setDark(next); document.documentElement.dataset.theme = next ? 'dark' : 'light'; try { localStorage.setItem('crowdfunding-theme', next ? 'dark' : 'light'); } catch {} }}>{dark ? <Sun/> : <Moon/>}</Button>;
+}
+function Demo() {
+ const [campaign, setCampaign] = useState(initialCampaign);
+ const [amount, setAmount] = useState('10');
+ const [view, setView] = useState('personal');
+ const [error, setError] = useState('');
+ const [notice, setNotice] = useState('');
+ const [busy, setBusy] = useState(false);
+ const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+ const pending = useRef(false);
+ useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+ const percent = campaign.total / target * 100;
+ const success = campaign.total === target;
+ function reset() { if(timer.current) clearTimeout(timer.current); pending.current = false; setBusy(false); setCampaign(initialCampaign); setAmount('10'); setError(''); setNotice('Yeni demo başladı.'); }
+ function submit(e: React.FormEvent) {
+  e.preventDefault(); if (pending.current) return;
+  const message = contributionError(amount, campaign); if (message) { setError(message); return; }
+  setError(''); setNotice(''); setBusy(true); pending.current = true;
+  timer.current = setTimeout(() => { setCampaign(current => contribute(current, amount)); setNotice('Katkın demo kampanyasına eklendi.'); setBusy(false); pending.current = false; }, 650);
+ }
+ return <section id="demo" className="demo-section section-wrap">
+  <div className="section-heading"><h2>Görünür olan ilerleme.<br/><span>Gizli kalan sensin.</span></h2><p>Bir katkı yap. Görünümü değiştir. Süreyi bitir.<br/>İki farklı sonucu kendin deneyimle.</p></div>
+  <div className="demo-shell">
+   <div className="demo-top"><span className="demo-label"><span className="status-dot"/>Etkileşimli demo</span><span className="sample-note">Örnek kampanya · Gerçek para kullanılmaz</span><Button variant="ghost" className="reset-button" onClick={reset} aria-label="Demoyu sıfırla"><RotateCcw/><span>Sıfırla</span></Button></div>
+   <div className="demo-grid">
+    <div className="public-campaign">
+      <div className="campaign-topline"><span className="campaign-category">TOPLULUK FONU</span><span className="public-label"><Eye/>Herkese açık</span></div>
+      <h3>Bir fikre birlikte<br/>hayat verelim.</h3>
+      {!campaign.ended ? <>
+       <div className="campaign-meta"><span><Timer/>5 günlük kampanya</span><span>Hedef {money(target)}</span></div>
+       <div className="progress-number"><span>{new Intl.NumberFormat('tr-TR', {maximumFractionDigits:2}).format(percent)}<small>%</small></span><span>ortak hedefe<br/>bir adım daha yakın</span></div>
+       <div className="segmented-progress" role="progressbar" aria-label="Kampanya ilerlemesi" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>{Array.from({length:40}, (_,i) => <span key={i} className={i < Math.floor(percent / 2.5) ? 'filled' : ''}/>)}</div>
+       <div className="progress-scale"><span>Başlangıç</span><span>Ortak hedef</span></div>
+       <div className="campaign-privacy"><LockKeyhole/><p>{success ? 'Hedef tamamlandı. Sonuç için sürenin dolması bekleniyor.' : 'Bireysel katkılar görünmez. Yalnızca toplam ilerleme paylaşılır.'}</p></div>
+      </> : <div className="public-result" role="status"><div className="result-icon">{success ? <CircleCheck/> : <Undo2/>}</div><p>Kampanya sonucu</p><strong>{success ? 'Başarılı' : 'Başarısız'}</strong><p>Herkese yalnızca sonuç açıklanır.<br/>Bireysel katkılar gizli kalır.</p></div>}
+    </div>
+    <div className="participant-area">
+      <Tabs value={view} onValueChange={setView}>
+       <TabsList className="view-tabs" aria-label="Demo görünümü"><TabsTrigger value="personal"><LockKeyhole/>Senin görünümün</TabsTrigger><TabsTrigger value="public"><Eye/>Ziyaretçi görünümü</TabsTrigger></TabsList>
+       <TabsContent value="personal">
+        {!campaign.ended ? <form onSubmit={submit} noValidate>
+         <h4>{success ? 'Hedef tamamlandı.' : 'Küçük bir katkı. Ortak bir gelecek.'}</h4>
+         <p className="form-description">{success ? 'Katkılar kapandı. Simülasyonda süreyi bitirerek sonucu görebilirsin.' : 'Katkı tutarın sadece senin görünümünde kalır.'}</p>
+         <label htmlFor="amount">Katkı tutarın <span>USD</span></label>
+         <div className="amount-field"><span>$</span><Input id="amount" inputMode="decimal" value={amount} onChange={e=>{setAmount(e.target.value); setError('');}} disabled={busy || success} aria-invalid={!!error} aria-describedby={error ? 'amount-error' : 'amount-help'} autoComplete="off"/></div>
+         <div className="amount-presets">{['5','10','25'].map(value=><Button key={value} type="button" variant="outline" className={amount===value?'selected':''} disabled={busy || success} onClick={()=>{setAmount(value);setError('');}}>${value}</Button>)}</div>
+         <p id="amount-help" className="input-help">Hedefi aşan katkılar kabul edilmez.</p>
+         {error && <p id="amount-error" className="form-error" role="alert">{error}</p>}
+         <Button type="submit" className="contribute-button" disabled={busy || success} aria-busy={busy}>{busy ? <span className="loading-text">Katkı işleniyor...</span> : <><LockKeyhole/>{success ? 'Hedef tamamlandı' : 'Gizli katkı yap'}<ArrowRight/></>}</Button>
+         <div className="own-total"><span>Senin toplam katkın</span><strong>{money(campaign.own)}</strong></div>
+         <p className="private-note"><ShieldCheck/>Bu tutar ziyaretçi görünümünde yer almaz.</p>
+        </form> : <div className="personal-result"><ShieldCheck/><h4>{success ? 'Birlikte başardık.' : campaign.own > 0 ? 'Katkın sana geri döndü.' : 'Bu kez hedefe ulaşılmadı.'}</h4><p>{success ? 'Demo fonları kampanya sahibine aktarıldı.' : campaign.own > 0 ? 'Demo iaden otomatik olarak tamamlandı. Bu bilgi yalnızca senin görünümünde.' : 'Katkı yapmadığın için iade edilecek tutarın bulunmuyor.'}</p><div className="receipt"><span>{success ? 'Gizli katkın' : 'İade edilen tutar'}</span><strong>{money(campaign.own)}</strong><span><Check/>{success ? 'Demo aktarımı tamamlandı' : 'Demo kapandı'}</span></div><Button variant="outline" onClick={reset}>Yeniden dene<RotateCcw/></Button></div>}
+        <p className="notice" role="status" aria-live="polite">{notice}</p>
+       </TabsContent>
+       <TabsContent value="public"><div className="visitor-view"><EyeOff/><h4>Burada sana ait<br/>bir tutar yok.</h4><p>Ziyaretçiler katkı sahiplerini ve kişisel tutarları göremez. {campaign.ended ? 'Yalnızca kampanyanın sonucu görünür.' : 'Yalnızca ortak hedefin ilerleyişi görünür.'}</p><span><Check/>Kişisel bilgiler gizli</span></div></TabsContent>
+      </Tabs>
+    </div>
+   </div>
+   <div className="demo-controls"><div><Timer/><p><strong>Zamanı sen yönet.</strong><span>{campaign.ended ? 'Kampanya sona erdi. Yeni bir senaryo deneyebilirsin.' : 'Hedef %100 ise fon aktarımı, değilse gizli iade.'}</span></p></div><Button variant="outline" onClick={()=>{setCampaign(current=>({...current,ended:true}));setNotice('');setError('');}} disabled={campaign.ended || busy}>Süreyi bitir<ArrowUpRight/></Button></div>
+  </div>
+  <p className="demo-disclaimer"><LockKeyhole/>Bu bir arayüz simülasyonudur. ZK kanıtı üretilmez; cüzdan bağlantısı veya gerçek fon aktarımı yapılmaz.</p>
+ </section>
+}
+export function Landing() {
+ const [menu,setMenu] = useState(false);
+ return <><a className="skip-link" href="#main">İçeriğe geç</a><header className="site-header section-wrap"><Brand/><nav aria-label="Ana gezinme" className={menu?'nav-links is-open':'nav-links'}><a href="#how" onClick={()=>setMenu(false)}>Nasıl çalışır?</a><a href="#privacy" onClick={()=>setMenu(false)}>Gizlilik</a><a href="#faq" onClick={()=>setMenu(false)}>Sorular</a></nav><div className="nav-actions"><ThemeToggle/><Button asChild className="nav-cta" variant="outline"><a href="#demo">Demoyu dene<ArrowUpRight/></a></Button><Button variant="ghost" size="icon" className="menu-toggle" aria-expanded={menu} aria-label={menu?'Menüyü kapat':'Menüyü aç'} onClick={()=>setMenu(!menu)}>{menu?<X/>:<Menu/>}</Button></div></header>
+ <main id="main">
+  <section className="hero section-wrap"><div className="hero-copy"><h1>Hedef ortak.<br/><span>Katkın sana özel.</span></h1><p>İnandığın fikri destekle. Katkın gizli kalsın.<br/>Hedef gerçekleşsin ya da katkın sana geri dönsün.</p><div className="hero-actions"><Button asChild className="primary-cta"><a href="#demo">Demoyu dene<ArrowUpRight/></a></Button><a className="text-link" href="#how">Nasıl çalışır?<ArrowRight/></a></div></div><div className="hero-art"><img src="/hero.webp" width="1024" height="1024" alt="Mühürlü gümüş katmanların zümrüt bir parçayla birleşerek oluşturduğu halka" fetchPriority="high"/></div></section>
+  <div className="principle-band section-wrap"><p><LockKeyhole/><span>Katkıların <strong>gizli.</strong></span></p><p><Eye/><span>İlerlemen <strong>görünür.</strong></span></p><p><ShieldCheck/><span>Sonuç <strong>ya hep ya hiç.</strong></span></p></div>
+  <Demo/>
+  <section id="how" className="how-section section-wrap"><div className="section-heading"><h2>Bir hedef.<br/><span>Herkes için aynı kural.</span></h2><p>Katılmadan önce koşulları bilirsin.<br/>Sonuç ne olursa olsun, katkın sana özel kalır.</p></div><div className="steps"><article><span className="step-icon"><Timer/></span><h3>Hedef belirlenir.</h3><p>Kampanya sahibi hedef tutarı ve süreyi belirler. Kurallar herkes için baştan bellidir.</p></article><article><span className="step-icon"><LockKeyhole/></span><h3>Katkılar gizli kalır.</h3><p>Katılımcılar destek olur. Kamuya açık olan, bireysel tutarlar değil toplam ilerlemedir.</p></article><article><span className="step-icon"><ShieldCheck/></span><h3>Sonuç koşula bağlıdır.</h3><p>Süre sonunda hedef tamamsa fon aktarılır. Değilse herkes kendi katkısını geri alır.</p></article></div></section>
+  <section id="privacy" className="privacy-section section-wrap"><div className="privacy-copy"><LockKeyhole className="section-symbol"/><h2>Bir fikre destek olmak,<br/><span>ifşa olmak değildir.</span></h2><p>Sıfır bilgi yaklaşımı, bir katkının geçerli olduğunu tutarını açığa çıkarmadan kanıtlamayı amaçlar.</p><a href="#faq" className="text-link">Gizlilik hakkında<ArrowRight/></a></div><div className="visibility-list"><div><Eye/><h3>Herkese açık</h3><p>Kampanya hedefi ve süresi</p><p>Süre boyunca toplam ilerleme yüzdesi</p><p>Süre sonunda başarılı / başarısız sonucu</p></div><div><EyeOff/><h3>Sana özel</h3><p>Bireysel katkı tutarın</p><p>Sana ait katkı kaydı</p><p>Varsa kişisel iade tutarın</p></div></div></section>
+  <section id="faq" className="faq-section section-wrap"><h2>Aklındaki sorular.</h2><Accordion type="single" collapsible className="faq-list">{faqs.map(([question,answer],i)=><AccordionItem key={question} value={`faq-${i}`}><AccordionTrigger>{question}</AccordionTrigger><AccordionContent>{answer}</AccordionContent></AccordionItem>)}</Accordion></section>
+ </main><footer className="site-footer section-wrap"><div><Brand/><p>Ortak hedefler. Özel katkılar.</p></div><span>Confidential all-or-nothing crowdfunding<br/>Yarışma için hazırlanmış konsept demo</span><a className="text-link" href="#demo">Demoyu dene<ArrowUpRight/></a></footer></>;
+}
