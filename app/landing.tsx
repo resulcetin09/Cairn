@@ -35,6 +35,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { initialCampaign, contributionError, contribute, target } from './campaign';
 import { useWallet } from './wallet-context';
+import { CinematicBackdrop } from './cinematic';
+import {
+  INITIAL_CAMPAIGNS,
+  formatTNight,
+  type CampaignItem,
+  type CampaignCategory,
+} from './campaigns';
 import {
   runAutomatedSuccessScenario,
   runLaceWalletRefundScenario,
@@ -208,9 +215,11 @@ function HeaderWalletButton() {
   );
 }
 
-function Demo() {
-  const [campaign, setCampaign] = useState(initialCampaign);
-  const [amount, setAmount] = useState('10');
+function CampaignsSection() {
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>(INITIAL_CAMPAIGNS);
+  const [selectedId, setSelectedId] = useState<string>('cairn-02');
+  const [categoryFilter, setCategoryFilter] = useState<'TÜMÜ' | CampaignCategory>('TÜMÜ');
+  const [amount, setAmount] = useState('100');
   const [view, setView] = useState('personal');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -231,44 +240,56 @@ function Demo() {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
-  const percent = (campaign.total / target) * 100;
-  const success = campaign.total === target;
+  const selectedCampaign = campaigns.find((c) => c.id === selectedId) || campaigns[0];
+  const percent = Math.min(100, (selectedCampaign.raisedAmount / selectedCampaign.targetAmount) * 100);
+  const success = selectedCampaign.raisedAmount >= selectedCampaign.targetAmount;
 
-  function reset() {
-    if (timer.current) clearTimeout(timer.current);
-    pending.current = false;
-    setBusy(false);
-    setCampaign(initialCampaign);
-    setAmount('10');
-    setError('');
-    setNotice('Yeni demo başladı.');
-  }
+  const filteredCampaigns = categoryFilter === 'TÜMÜ'
+    ? campaigns
+    : campaigns.filter((c) => c.category === categoryFilter);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (pending.current) return;
-    const message = contributionError(amount, campaign);
-    if (message) {
-      setError(message);
+    const num = Number(amount);
+    if (isNaN(num) || num <= 0) {
+      setError('Geçerli bir tNIGHT tutarı girin.');
       return;
     }
+    if (selectedCampaign.raisedAmount + num > selectedCampaign.targetAmount) {
+      setError('Bu katkı hedef tutarı aşıyor.');
+      return;
+    }
+
     setError('');
     setNotice('');
     setBusy(true);
     pending.current = true;
 
-    // Cüzdan bağlıysa ZK simülasyon mesajı verelim
-    const delay = isConnected ? 1200 : 650;
+    const delay = isConnected ? 1200 : 700;
     if (isConnected) {
-      setNotice('Midnight ZK kanıtı oluşturuluyor ve Lace ile imzalanıyor...');
+      setNotice('Midnight ZK taahhüdü oluşturuluyor ve Lace ile onaylanıyor...');
     }
 
     timer.current = setTimeout(() => {
-      setCampaign((current) => contribute(current, amount));
+      setCampaigns((prev) =>
+        prev.map((c) => {
+          if (c.id === selectedCampaign.id) {
+            const newRaised = c.raisedAmount + num;
+            return {
+              ...c,
+              raisedAmount: newRaised,
+              userContribution: c.userContribution + num,
+              status: newRaised >= c.targetAmount ? 'success' : 'active',
+            };
+          }
+          return c;
+        })
+      );
       setNotice(
         isConnected
-          ? 'Gizli katkın Midnight ağına ZK commitment olarak iletildi.'
-          : 'Katkın demo kampanyasına eklendi.'
+          ? `${formatTNight(num)} gizli katkın Midnight ağına ZK taahhüdü olarak eklendi.`
+          : `${formatTNight(num)} katkın kampanyaya eklendi.`
       );
       setBusy(false);
       pending.current = false;
@@ -276,68 +297,141 @@ function Demo() {
   }
 
   return (
-    <section id="demo" className="demo-section section-wrap">
+    <section id="campaigns" className="demo-section section-wrap">
       <div className="section-heading">
         <h2>
-          Görünür olan ilerleme.<br />
-          <span>Gizli kalan sensin.</span>
+          Fikirler ortak.<br />
+          <span>Katkın sana özel.</span>
         </h2>
         <p>
-          Cüzdanını bağla. Bir gizli katkı yap. Süreyi bitir.<br />
-          Midnight Zero-Knowledge mimarisini doğrudan deneyimle.
+          Midnight Network üzerinde gizlilik korumalı aktif kampanyaları keşfet.<br />
+          ZK taahhüdü ile destek ol; hedef gerçekleşsin ya da katkın sana geri dönsün.
         </p>
       </div>
 
+      {/* Kategori Filtreleme Barı */}
+      <div className="campaign-categories-bar">
+        {(['TÜMÜ', 'AÇIK KAYNAK', 'ZK GİZLİLİK', 'EKOSİSTEM'] as const).map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            className={`category-pill-btn ${categoryFilter === cat ? 'active' : ''}`}
+            onClick={() => setCategoryFilter(cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Kampanya Kartları Grid'i */}
+      <div className="campaigns-explore-grid">
+        {filteredCampaigns.map((camp) => {
+          const campPercent = Math.min(100, (camp.raisedAmount / camp.targetAmount) * 100);
+          const isCampSelected = camp.id === selectedId;
+
+          return (
+            <div
+              key={camp.id}
+              className={`campaign-card ${isCampSelected ? 'is-selected' : ''}`}
+              onClick={() => {
+                setSelectedId(camp.id);
+                setError('');
+                setNotice('');
+              }}
+            >
+              <div className="campaign-card-top">
+                <span className="campaign-card-tag">{camp.category}</span>
+                <span className="campaign-card-time">
+                  <Timer className="w-3.5 h-3.5" />
+                  {camp.deadlineDays > 0 ? `${camp.deadlineDays} gün kaldı` : 'Tamamlandı'}
+                </span>
+              </div>
+
+              <h4 className="campaign-card-title">{camp.title}</h4>
+              <p className="campaign-card-desc">{camp.description}</p>
+
+              {/* Mini Segmented Bar */}
+              <div className="campaign-card-progress-wrap">
+                <div className="campaign-card-progress-header">
+                  <span className="card-progress-percent">
+                    %{new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(campPercent)}
+                  </span>
+                  <span className="card-target-text">Hedef: {formatTNight(camp.targetAmount)}</span>
+                </div>
+                <div className="segmented-progress-mini">
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <span
+                      key={i}
+                      className={i < Math.floor(campPercent / 4.16) ? 'filled' : ''}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="campaign-card-footer">
+                <span className="card-raised-info">
+                  Toplanan: <strong>{formatTNight(camp.raisedAmount)}</strong>
+                </span>
+                <button
+                  type="button"
+                  className={`card-select-btn ${isCampSelected ? 'selected' : ''}`}
+                >
+                  {isCampSelected ? 'İnceleniyor' : 'Katkı Yap'}
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Seçili Kampanyanın İnteraktif Detay & Katkı Paneli */}
       <div className="demo-shell">
         <div className="demo-top">
           <span className="demo-label">
             <span className="status-dot" />
-            Midnight dApp Demo
+            Seçili Kampanya: <strong>{selectedCampaign.title}</strong>
           </span>
           {isConnected ? (
             <span className="sample-note connected-note">
               <span className="wallet-live-dot" />
-              Lace Bağlı: <strong>{formatAddress(shieldedAddress || unshieldedAddress)}</strong> (Midnight Preview)
+              Lace Aktif: <strong>{formatAddress(shieldedAddress || unshieldedAddress)}</strong> (Midnight Preview)
             </span>
           ) : (
-            <span className="sample-note">Lace Cüzdanı ile veya Demo Modunda Katıl</span>
+            <span className="sample-note">Lace Cüzdanını Bağlayarak Doğrudan Katılabilirsin</span>
           )}
-          <Button variant="ghost" className="reset-button" onClick={reset} aria-label="Demoyu sıfırla">
-            <RotateCcw />
-            <span>Sıfırla</span>
-          </Button>
         </div>
 
         <div className="demo-grid">
-          {/* Sol: Herkese Açık Görünüm */}
+          {/* Sol: Herkese Açık Kampanya Görünümü */}
           <div className="public-campaign">
             <div className="campaign-topline">
-              <span className="campaign-category">TOPLULUK FONU · MIDNIGHT</span>
+              <span className="campaign-category">{selectedCampaign.category} · MIDNIGHT</span>
               <span className="public-label">
                 <Eye />
                 Herkese açık
               </span>
             </div>
-            <h3>
-              Bir fikre birlikte<br />
-              hayat verelim.
-            </h3>
-            {!campaign.ended ? (
+            <h3>{selectedCampaign.title}</h3>
+            {selectedCampaign.status !== 'failed' ? (
               <>
                 <div className="campaign-meta">
                   <span>
-                    <Timer />5 günlük kampanya
+                    <Timer />
+                    {selectedCampaign.deadlineDays > 0
+                      ? `${selectedCampaign.deadlineDays} günlük süre`
+                      : 'Süre doldu'}
                   </span>
-                  <span>Hedef {money(target)}</span>
+                  <span>Hedef {formatTNight(selectedCampaign.targetAmount)}</span>
                 </div>
                 <div className="progress-number">
                   <span>
-                    {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(percent)}
+                    {new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 1 }).format(percent)}
                     <small>%</small>
                   </span>
                   <span>
                     ortak hedefe<br />
-                    bir adım daha yakın
+                    ZK gizliliği ile
                   </span>
                 </div>
                 <div
@@ -354,25 +448,27 @@ function Demo() {
                 </div>
                 <div className="progress-scale">
                   <span>Başlangıç</span>
-                  <span>Ortak hedef</span>
+                  <span>Ortak hedef ({formatTNight(selectedCampaign.targetAmount)})</span>
                 </div>
                 <div className="campaign-privacy">
                   <LockKeyhole />
                   <p>
                     {success
-                      ? 'Hedef tamamlandı. Sonuç için sürenin dolması bekleniyor.'
-                      : 'Bireysel katkılar görünmez. Yalnızca toplam ilerleme paylaşılır.'}
+                      ? 'Hedef tamamlandı! Fonlar akıllı sözleşme tarafından kampanya sahibine aktarılmaya hazır.'
+                      : 'Bireysel katkılar zincirde görünmez. Yalnızca toplam ilerleme yüzdesi doğrulanır.'}
                   </p>
                 </div>
               </>
             ) : (
               <div className="public-result" role="status">
-                <div className="result-icon">{success ? <CircleCheck /> : <Undo2 />}</div>
+                <div className="result-icon">
+                  <Undo2 />
+                </div>
                 <p>Kampanya sonucu</p>
-                <strong>{success ? 'Başarılı' : 'Başarısız'}</strong>
+                <strong>Başarısız</strong>
                 <p>
-                  Herkese yalnızca sonuç açıklanır.<br />
-                  Bireysel katkılar gizli kalır.
+                  Hedefe ulaşılamadığı için katılımcılar ZK Nullifier ile<br />
+                  tNIGHT katkılarını cüzdanlarına geri çeker.
                 </p>
               </div>
             )}
@@ -381,7 +477,7 @@ function Demo() {
           {/* Sağ: Katılımcı Alanı */}
           <div className="participant-area">
             <Tabs value={view} onValueChange={setView}>
-              <TabsList className="view-tabs" aria-label="Demo görünümü">
+              <TabsList className="view-tabs" aria-label="Görünüm modu">
                 <TabsTrigger value="personal">
                   <LockKeyhole />
                   Senin görünümün
@@ -393,19 +489,19 @@ function Demo() {
               </TabsList>
 
               <TabsContent value="personal">
-                {!campaign.ended ? (
+                {selectedCampaign.status !== 'failed' ? (
                   <form onSubmit={submit} noValidate>
                     {/* Cüzdan durumu kartı */}
                     <div className="wallet-mini-status">
                       {isConnected ? (
                         <div className="wallet-active-badge">
                           <Check className="w-3.5 h-3.5 text-primary" />
-                          <span>Lace Aktif:</span>
+                          <span>Lace Cüzdanın Bağlı:</span>
                           <strong>{formatAddress(shieldedAddress || unshieldedAddress)}</strong>
                         </div>
                       ) : (
                         <div className="wallet-inactive-prompt">
-                          <span>Dilersen Lace cüzdanınla doğrudan bağlanabilirsin:</span>
+                          <span>Doğrudan Lace cüzdanınla katkı yapabilirsin:</span>
                           <button
                             type="button"
                             className="wallet-quick-connect"
@@ -413,27 +509,27 @@ function Demo() {
                             onClick={connect}
                           >
                             <Wallet className="w-3.5 h-3.5" />
-                            {connecting ? 'Bağlanıyor...' : 'Lace ile Giriş Yap'}
+                            {connecting ? 'Bağlanıyor...' : 'Lace Cüzdanı Bağla'}
                           </button>
                         </div>
                       )}
                     </div>
 
-                    <h4>{success ? 'Hedef tamamlandı.' : 'Küçük bir katkı. Ortak bir gelecek.'}</h4>
+                    <h4>{success ? 'Hedef tamamlandı.' : 'Gizli katkı yap. Projeyi büyüt.'}</h4>
                     <p className="form-description">
                       {success
-                        ? 'Katkılar kapandı. Simülasyonda süreyi bitirerek sonucu görebilirsin.'
-                        : 'Katkı tutarın sadece senin görünümünde kalır.'}
+                        ? 'Bu kampanya hedefine ulaştı. Yeni katkılar kapandı.'
+                        : 'Katkı tutarın Midnight ZK taahhüdüyle korunur; zincirde yalnızca sen bilirsin.'}
                     </p>
 
                     <label htmlFor="amount">
-                      Katkı tutarın <span>USD</span>
+                      Katkı tutarın <span>tNIGHT</span>
                     </label>
                     <div className="amount-field">
-                      <span>$</span>
+                      <span className="text-sm font-mono opacity-60">₥</span>
                       <Input
                         id="amount"
-                        inputMode="decimal"
+                        inputMode="numeric"
                         value={amount}
                         onChange={(e) => {
                           setAmount(e.target.value);
@@ -447,7 +543,7 @@ function Demo() {
                     </div>
 
                     <div className="amount-presets">
-                      {['5', '10', '25'].map((value) => (
+                      {['50', '100', '250', '500'].map((value) => (
                         <Button
                           key={value}
                           type="button"
@@ -459,7 +555,7 @@ function Demo() {
                             setError('');
                           }}
                         >
-                          ${value}
+                          {value} tNIGHT
                         </Button>
                       ))}
                     </div>
@@ -480,60 +576,50 @@ function Demo() {
                       aria-busy={busy}
                     >
                       {busy ? (
-                        <span className="loading-text">
-                          {isConnected ? 'Midnight ZK İşlemi Yapılıyor...' : 'Katkı işleniyor...'}
-                        </span>
+                        <span className="loading-text">Midnight ZK İşlemi Gönderiliyor...</span>
                       ) : (
                         <>
                           <LockKeyhole />
                           {success
-                            ? 'Hedef tamamlandı'
+                            ? 'Hedef Tamamlandı'
                             : isConnected
                             ? 'Lace ile Gizli Katkı Yap'
-                            : 'Gizli katkı yap'}
+                            : 'Gizli Katkı Yap'}
                           <ArrowRight />
                         </>
                       )}
                     </Button>
 
                     <div className="own-total">
-                      <span>Senin toplam katkın</span>
-                      <strong>{money(campaign.own)}</strong>
+                      <span>Bu kampanyadaki toplam katkın</span>
+                      <strong>{formatTNight(selectedCampaign.userContribution)}</strong>
                     </div>
                     <p className="private-note">
                       <ShieldCheck />
-                      Bu tutar ziyaretçi görünümünde yer almaz.
+                      Bu miktar ziyaretçi görünümünde ve zincir explorer'ında görünmez.
                     </p>
                   </form>
                 ) : (
                   <div className="personal-result">
                     <ShieldCheck />
                     <h4>
-                      {success
-                        ? 'Birlikte başardık.'
-                        : campaign.own > 0
+                      {selectedCampaign.userContribution > 0
                         ? 'Katkın sana geri döndü.'
-                        : 'Bu kez hedefe ulaşılmadı.'}
+                        : 'Hedefe ulaşılamadı.'}
                     </h4>
                     <p>
-                      {success
-                        ? 'Fonlar kampanya sahibine aktarıldı.'
-                        : campaign.own > 0
-                        ? 'Gizli iaden otomatik olarak tamamlandı. Bu bilgi yalnızca senin cüzdanında görünür.'
-                        : 'Katkı yapmadığın için iade edilecek tutarın bulunmuyor.'}
+                      {selectedCampaign.userContribution > 0
+                        ? 'Gizli iaden Midnight ZK devresi tarafından cüzdanına tanımlandı.'
+                        : 'Bu kampanyaya katkı yapmamış görünüyorsun.'}
                     </p>
                     <div className="receipt">
-                      <span>{success ? 'Gizli katkın' : 'İade edilen tutar'}</span>
-                      <strong>{money(campaign.own)}</strong>
+                      <span>İade edilen tutar</span>
+                      <strong>{formatTNight(selectedCampaign.userContribution)}</strong>
                       <span>
                         <Check />
-                        {success ? 'Midnight aktarımı tamamlandı' : 'İade doğrulandı'}
+                        Midnight iade doğrulaması tamamlandı
                       </span>
                     </div>
-                    <Button variant="outline" onClick={reset}>
-                      Yeniden dene
-                      <RotateCcw />
-                    </Button>
                   </div>
                 )}
                 <p className="notice" role="status" aria-live="polite">
@@ -550,13 +636,11 @@ function Demo() {
                   </h4>
                   <p>
                     Ziyaretçiler katkı sahiplerini ve kişisel tutarları göremez.{' '}
-                    {campaign.ended
-                      ? 'Yalnızca kampanyanın sonucu görünür.'
-                      : 'Yalnızca ortak hedefin ilerleyişi görünür.'}
+                    Yalnızca ortak hedefin ilerleyişi doğrulanabilir.
                   </p>
                   <span>
                     <Check />
-                    Kişisel bilgiler gizli
+                    Kişisel bilgiler ZK ile korunur
                   </span>
                 </div>
               </TabsContent>
@@ -568,24 +652,30 @@ function Demo() {
           <div>
             <Timer />
             <p>
-              <strong>Zamanı sen yönet.</strong>
+              <strong>All-or-Nothing Kuralı</strong>
               <span>
-                {campaign.ended
-                  ? 'Kampanya sona erdi. Yeni bir senaryo deneyebilirsin.'
-                  : 'Hedef %100 ise fon aktarımı, değilse gizli iade.'}
+                {selectedCampaign.status === 'success'
+                  ? 'Hedef %100 tamamlandı; fonlar kampanya sahibine açıldı.'
+                  : 'Süre dolduğunda hedef %100 ise fon aktarımı, değilse tüm katılımcılara gizli iade.'}
               </span>
             </p>
           </div>
           <Button
             variant="outline"
             onClick={() => {
-              setCampaign((current) => ({ ...current, ended: true }));
+              setCampaigns((prev) =>
+                prev.map((c) =>
+                  c.id === selectedCampaign.id
+                    ? { ...c, status: c.raisedAmount >= c.targetAmount ? 'success' : 'failed' }
+                    : c
+                )
+              );
               setNotice('');
               setError('');
             }}
-            disabled={campaign.ended || busy}
+            disabled={selectedCampaign.status !== 'active' || busy}
           >
-            Süreyi bitir
+            Süreyi tamamla & Kontrol Et
             <ArrowUpRight />
           </Button>
         </div>
@@ -593,7 +683,7 @@ function Demo() {
 
       <p className="demo-disclaimer">
         <LockKeyhole />
-        Midnight Network (Preview) & Lace Wallet entegrasyonu. Zero-Knowledge Compact devreleri ile gizli mutabakat simülasyonu.
+        Midnight Network (Preview) & Lace Wallet entegrasyonu. Zero-Knowledge Compact devreleri ile gizli mutabakat protokolü.
       </p>
     </section>
   );
@@ -807,7 +897,8 @@ export function Landing() {
   const [menu, setMenu] = useState(false);
 
   return (
-    <>
+    <div className="cinematic-page">
+      <CinematicBackdrop />
       <a className="skip-link" href="#main">
         İçeriğe geç
       </a>
@@ -816,6 +907,9 @@ export function Landing() {
         <nav aria-label="Ana gezinme" className={menu ? 'nav-links is-open' : 'nav-links'}>
           <a href="#how" onClick={() => setMenu(false)}>
             Nasıl çalışır?
+          </a>
+          <a href="#campaigns" onClick={() => setMenu(false)}>
+            Kampanyalar
           </a>
           <a href="#test-lab" onClick={() => setMenu(false)}>
             Sözleşme Testi
@@ -844,7 +938,8 @@ export function Landing() {
       </header>
 
       <main id="main">
-        <section className="hero section-wrap">
+        <section className="cinematic-intro" aria-label="Cairn ile ortak bir hedefe">
+        <div className="hero">
           <div className="hero-copy">
             <h1>
               Hedef ortak.<br />
@@ -856,8 +951,8 @@ export function Landing() {
             </p>
             <div className="hero-actions">
               <Button asChild className="primary-cta">
-                <a href="#demo">
-                  Kampanyaya Katıl
+                <a href="#campaigns">
+                  Kampanyaları Keşfet
                   <ArrowUpRight />
                 </a>
               </Button>
@@ -867,15 +962,15 @@ export function Landing() {
               </a>
             </div>
           </div>
-          <div className="hero-art">
-            <img
-              src="/hero.webp"
-              width="1024"
-              height="1024"
-              alt="Mühürlü gümüş katmanların zümrüt bir parçayla birleşerek oluşturduğu halka"
-              fetchPriority="high"
-            />
+          <div className="story-panel story-private" aria-hidden="true">
+            <h2>Katkıların gizli.<br/><span>Etkisi hepimize ait.</span></h2>
+            <p>Kimin ne kadar verdiği değil,<br/>birlikte neyi mümkün kıldığımız görünür.</p>
           </div>
+          <div className="story-panel story-outcome" aria-hidden="true">
+            <h2>Hedef gerçekleşir.<br/><span>Ya da katkın geri döner.</span></h2>
+            <p>Tek bir ortak hedef.<br/>Herkes için baştan belli olan bir kural.</p>
+          </div>
+        </div>
         </section>
 
         <div className="principle-band section-wrap">
@@ -899,7 +994,7 @@ export function Landing() {
           </p>
         </div>
 
-        <Demo />
+        <CampaignsSection />
         <ContractTestLab />
 
         <section id="how" className="how-section section-wrap">
@@ -993,11 +1088,11 @@ export function Landing() {
           Midnight Network · Confidential Crowdfunding<br />
           RiseIn Moonshots Hackathon
         </span>
-        <a className="text-link" href="#demo">
-          Kampanyaya Katıl
+        <a className="text-link" href="#campaigns">
+          Kampanyaları Keşfet
           <ArrowUpRight />
         </a>
       </footer>
-    </>
+    </div>
   );
 }

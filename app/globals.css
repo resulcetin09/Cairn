@@ -85,3 +85,45 @@
 .terminal-summary{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:6px;margin-top:8px;font-size:13px;font-weight:600}
 .terminal-summary.success{background:#064e3b;color:#a7f3d0;border:1px solid #059669}
 .terminal-summary.failed{background:#4c0519;color:#fecdd3;border:1px solid #e11d48}
+
+/* Explore Campaigns Grid & Cards */
+.campaign-categories-bar{display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap}
+.category-pill-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted-foreground);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:all 160ms ease}
+.category-pill-btn:hover{border-color:var(--primary);color:var(--foreground)}
+.category-pill-btn.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+
+.campaigns-explore-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:34px}
+.campaign-card{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:24px;cursor:pointer;transition:all 180ms var(--ease-out);display:flex;flex-direction:column}
+.campaign-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 8px 24px #0000000a}
+.campaign-card.is-selected{border-color:var(--primary);box-shadow:0 0 0 1.5px var(--primary);background:var(--surface-raised)}
+
+.campaign-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.campaign-card-tag{font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 8px;border-radius:4px;background:var(--accent-soft);color:var(--primary)}
+.campaign-card-time{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted-foreground)}
+.campaign-card-time svg{width:14px;height:14px}
+
+.campaign-card-title{font-size:18px;font-weight:600;letter-spacing:-.02em;margin-bottom:8px;line-height:1.35;color:var(--foreground)}
+.campaign-card-desc{font-size:13px;color:var(--muted-foreground);line-height:1.55;margin-bottom:20px;flex-grow:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.campaign-card-progress-wrap{margin-top:auto;padding-top:12px}
+.campaign-card-progress-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.card-progress-percent{font-size:15px;font-weight:700;color:var(--primary);font-variant-numeric:tabular-nums}
+.card-target-text{font-size:11px;color:var(--muted-foreground);font-family:ui-monospace,monospace}
+
+.segmented-progress-mini{display:grid;grid-template-columns:repeat(24,minmax(0,1fr));gap:3px;height:7px}
+.segmented-progress-mini>span{background:var(--border);border-radius:1px}
+.segmented-progress-mini>span.filled{background:var(--primary)}
+
+.campaign-card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.card-raised-info{font-size:12px;color:var(--muted-foreground)}
+.card-raised-info strong{color:var(--foreground);font-family:ui-monospace,monospace}
+.card-select-btn{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--muted-foreground);background:transparent;border:none;cursor:pointer;padding:0;transition:color 140ms ease}
+.card-select-btn:hover{color:var(--primary)}
+.card-select-btn.selected{color:var(--primary)}
+
+@media(max-width:767px){
+  .campaigns-explore-grid{grid-template-columns:1fr;gap:14px}
+  .campaign-card{padding:18px}
+  .campaign-categories-bar{gap:6px}
+  .category-pill-btn{padding:6px 12px;font-size:11px}
+}
