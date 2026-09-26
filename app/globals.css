@@ -59,9 +59,38 @@
 .tx-explorer-link:hover{opacity:.85}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn 150ms ease-out}
+.modal-content{background:var(--card);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px #0000002a}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border)}
+.modal-header h3{font-size:18px;font-weight:600;letter-spacing:-.02em}
+.modal-close{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;border:none;background:transparent;color:var(--muted-foreground);cursor:pointer;transition:all 140ms ease}
+.modal-close:hover{background:var(--muted);color:var(--foreground)}
+.modal-wallet-prompt{padding:40px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;color:var(--muted-foreground)}
+.create-campaign-form{padding:20px 24px;display:flex;flex-direction:column;gap:16px}
+.form-creator-info{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--foreground);padding:8px 12px;background:var(--accent-soft);border-radius:6px}
+.form-creator-info strong{font-family:ui-monospace,monospace;color:var(--primary)}
+.form-field{display:flex;flex-direction:column;gap:4px}
+.form-field label{font-size:12px;font-weight:600;color:var(--foreground);letter-spacing:.01em}
+.form-textarea{width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--background);color:var(--foreground);font-size:13px;font-family:inherit;resize:vertical;min-height:64px}
+.form-textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--accent-soft)}
+.form-select{width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--background);color:var(--foreground);font-size:13px;font-family:inherit;cursor:pointer}
+.form-select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px var(--accent-soft)}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Campaign Top Bar */
+.campaigns-top-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.campaigns-top-bar .campaign-categories-bar{margin-bottom:0}
+.create-campaign-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:13px;font-weight:600;background:var(--primary)!important;color:var(--primary-foreground)!important;border-radius:8px;white-space:nowrap}
+
+/* Empty State */
+.campaigns-empty-state{padding:60px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--muted-foreground);border:2px dashed var(--border);border-radius:16px;margin-bottom:34px}
+.campaigns-empty-state .empty-icon{width:64px;height:64px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:var(--accent-soft);color:var(--primary)}
+.campaigns-empty-state h3{font-size:20px;font-weight:600;color:var(--foreground);letter-spacing:-.02em}
+.campaigns-empty-state p{font-size:14px;max-width:380px;line-height:1.55}
 
 /* Explore Campaigns Grid & Cards */
-.campaign-categories-bar{display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap}
+.campaign-categories-bar{display:flex;gap:10px;flex-wrap:wrap}
 .category-pill-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--muted-foreground);font-size:12px;font-weight:600;letter-spacing:.02em;cursor:pointer;transition:all 160ms ease}
 .category-pill-btn:hover{border-color:var(--primary);color:var(--foreground)}
 .category-pill-btn.active{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
