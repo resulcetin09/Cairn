@@ -27,7 +27,7 @@ interface WalletContextType extends WalletState {
 
 const WalletContext = createContext<WalletContextType | null>(null);
 
-const TARGET_NETWORK = 'preprod';
+const TARGET_NETWORK = 'preview';
 const WALLET_CONNECTED_KEY = 'cairn_wallet_connected';
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {

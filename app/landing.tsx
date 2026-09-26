@@ -59,7 +59,7 @@ const faqs = [
   ],
   [
     'Lace cüzdanı ve Midnight entegrasyonu nasıl çalışır?',
-    'Lace, Midnight blockchain (Preprod ağı) için gizlilik özellikli cüzdandır. Cüzdanınızı bağladığınızda shielded adresiniz kullanılarak zero-knowledge kanıtları üretilir ve DUST token ile işlem ücretleri gizli kalır.',
+    'Lace, Midnight blockchain (Preview ağı) için gizlilik özellikli cüzdandır. Cüzdanınızı bağladığınızda shielded adresiniz kullanılarak zero-knowledge kanıtları üretilir ve DUST token ile işlem ücretleri gizli kalır.',
   ],
   [
     'Yüzde gösterimi tam gizlilik sağlar mı?',
@@ -140,7 +140,7 @@ function HeaderWalletButton() {
         >
           <span className="wallet-live-dot" />
           <span className="wallet-addr-text">{displayAddr}</span>
-          <span className="wallet-network-tag">Preprod</span>
+          <span className="wallet-network-tag">Preview</span>
         </button>
 
         {showDropdown && (
@@ -152,7 +152,7 @@ function HeaderWalletButton() {
             <div className="wallet-dropdown-info">
               <div>
                 <span className="text-xs text-muted">Ağ:</span>
-                <span className="text-xs font-mono font-medium">Midnight Preprod</span>
+                <span className="text-xs font-mono font-medium">Midnight Preview</span>
               </div>
               {shieldedAddress && (
                 <div>
@@ -297,7 +297,7 @@ function Demo() {
           {isConnected ? (
             <span className="sample-note connected-note">
               <span className="wallet-live-dot" />
-              Lace Bağlı: <strong>{formatAddress(shieldedAddress || unshieldedAddress)}</strong> (Midnight Preprod)
+              Lace Bağlı: <strong>{formatAddress(shieldedAddress || unshieldedAddress)}</strong> (Midnight Preview)
             </span>
           ) : (
             <span className="sample-note">Lace Cüzdanı ile veya Demo Modunda Katıl</span>
@@ -593,7 +593,7 @@ function Demo() {
 
       <p className="demo-disclaimer">
         <LockKeyhole />
-        Midnight Network (Preprod) & Lace Wallet entegrasyonu. Zero-Knowledge Compact devreleri ile gizli mutabakat simülasyonu.
+        Midnight Network (Preview) & Lace Wallet entegrasyonu. Zero-Knowledge Compact devreleri ile gizli mutabakat simülasyonu.
       </p>
     </section>
   );
@@ -727,7 +727,7 @@ function ContractTestLab() {
               <span className="dot-green" />
             </div>
             <span className="terminal-title">cairn.compact · Execution Console</span>
-            <span className="terminal-network">Midnight Preprod</span>
+            <span className="terminal-network">Midnight Preview</span>
           </div>
 
           <div className="test-terminal-body">

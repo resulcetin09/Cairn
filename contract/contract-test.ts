@@ -113,7 +113,7 @@ export async function runLaceWalletRefundScenario(
       step: 1,
       title: 'Lace Cüzdanı ile Sözleşme Başlatıldı',
       status: 'success',
-      detail: `Bağlı Cüzdan: ${userWalletAddress} | Ağ: Midnight Preprod`,
+      detail: `Bağlı Cüzdan: ${userWalletAddress} | Ağ: Midnight Preview`,
     });
 
     // Adım 2: Kendi cüzdanınla ZK gizli taahhüt üretildi
