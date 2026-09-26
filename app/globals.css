@@ -124,6 +124,10 @@
 .card-select-btn:hover{color:var(--primary)}
 .card-select-btn.selected{color:var(--primary)}
 
+.creator-pill{font-size:10px;font-weight:700;letter-spacing:.04em;padding:3px 8px;border-radius:4px;background:#153d2e;color:#34d399;border:1px solid #205d44}
+.category-empty-notice{grid-column:1/-1;padding:48px 24px;text-align:center;border:1px dashed var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted-foreground)}
+.category-empty-notice p{font-size:14px}
+
 @media(max-width:767px){
   .campaigns-explore-grid{grid-template-columns:1fr;gap:14px}
   .campaign-card{padding:18px}

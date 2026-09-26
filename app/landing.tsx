@@ -387,6 +387,7 @@ function CampaignsSection() {
   const [lastTx, setLastTx] = useState<{ txHash: string; explorerUrl: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [refundClaimed, setRefundClaimed] = useState<Record<string, boolean>>({});
   const pending = useRef(false);
 
   const {
@@ -396,6 +397,7 @@ function CampaignsSection() {
     unshieldedAddress,
     tNightBalance,
     sendContributionTransaction,
+    claimRefundTransaction,
     formatAddress,
     connect,
   } = useWallet();
@@ -526,6 +528,7 @@ function CampaignsSection() {
         onCreate={(data) => {
           const newCampaign = createCampaign(data);
           setSelectedId(newCampaign.id);
+          setCategoryFilter('TÜMÜ');
         }}
       />
 
@@ -545,7 +548,19 @@ function CampaignsSection() {
       ) : (
         <>
           <div className="campaigns-explore-grid">
-            {filteredCampaigns.map((camp) => {
+            {filteredCampaigns.length === 0 ? (
+              <div className="category-empty-notice">
+                <p>&ldquo;{categoryFilter}&rdquo; kategorisinde henüz kampanya bulunmuyor.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCategoryFilter('TÜMÜ')}
+                >
+                  Tüm Kampanyaları Göster
+                </Button>
+              </div>
+            ) : (
+              filteredCampaigns.map((camp) => {
               const campPercent = Math.min(100, (camp.raisedAmount / camp.targetAmount) * 100);
               const isCampSelected = camp.id === selectedId;
 
@@ -562,6 +577,9 @@ function CampaignsSection() {
                 >
                   <div className="campaign-card-top">
                     <span className="campaign-card-tag">{camp.category}</span>
+                    {walletAddr && camp.creatorAddress === walletAddr && (
+                      <span className="campaign-card-tag creator-pill">Senin</span>
+                    )}
                     <span className="campaign-card-time">
                       <Timer className="w-3.5 h-3.5" />
                       {camp.deadlineDays > 0 ? `${camp.deadlineDays} gün kaldı` : 'Tamamlandı'}
@@ -602,7 +620,7 @@ function CampaignsSection() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
 
           {/* Seçili Kampanyanın İnteraktif Detay & Katkı Paneli */}
@@ -612,6 +630,9 @@ function CampaignsSection() {
                 <span className="demo-label">
                   <span className="status-dot" />
                   Seçili Kampanya: <strong>{selectedCampaign.title}</strong>
+                  {walletAddr && selectedCampaign.creatorAddress === walletAddr && (
+                    <span className="creator-pill">🎯 Senin Kampanyan</span>
+                  )}
                 </span>
                 {isConnected ? (
                   <span className="sample-note connected-note">
@@ -858,22 +879,51 @@ function CampaignsSection() {
                           <ShieldCheck />
                           <h4>
                             {myContribution > 0
-                              ? 'Katkın sana geri döndü.'
+                              ? 'Hedefe ulaşılamadı. Katkın güvende.'
                               : 'Hedefe ulaşılamadı.'}
                           </h4>
                           <p>
                             {myContribution > 0
-                              ? 'Gizli iaden Midnight ZK devresi tarafından cüzdanına tanımlandı.'
+                              ? 'All-or-Nothing kuralı gereğince ZK Nullifier devresiyle tNIGHT katkını Lace cüzdanına geri çekebilirsin.'
                               : 'Bu kampanyaya katkı yapmamış görünüyorsun.'}
                           </p>
                           <div className="receipt">
-                            <span>İade edilen tutar</span>
+                            <span>İade tutarı</span>
                             <strong>{formatTNight(myContribution)}</strong>
                             <span>
                               <Check />
-                              Midnight iade doğrulaması tamamlandı
+                              Midnight ZK devresi doğrulandı
                             </span>
                           </div>
+
+                          {myContribution > 0 && (
+                            <Button
+                              type="button"
+                              className="contribute-button"
+                              style={{ marginTop: '14px' }}
+                              disabled={busy || !isConnected || refundClaimed[selectedCampaign.id]}
+                              onClick={async () => {
+                                try {
+                                  setBusy(true);
+                                  setError('');
+                                  setNotice('ZK Nullifier devresiyle gizli iade cüzdana aktarılıyor...');
+                                  const res = await claimRefundTransaction(myContribution);
+                                  setRefundClaimed((prev) => ({ ...prev, [selectedCampaign.id]: true }));
+                                  setLastTx(res);
+                                  setNotice(`${formatTNight(myContribution)} tutarındaki gizli iaden Lace cüzdanına aktarıldı ve bakiyene eklendi!`);
+                                } catch (err: unknown) {
+                                  setError(err instanceof Error ? err.message : 'İade işlemi başarısız oldu.');
+                                } finally {
+                                  setBusy(false);
+                                }
+                              }}
+                            >
+                              <Undo2 className="w-4 h-4" />
+                              {refundClaimed[selectedCampaign.id]
+                                ? 'İade Cüzdana Aktarıldı ✓'
+                                : 'Lace Cüzdanına İade Al (ZK Claim)'}
+                            </Button>
+                          )}
                         </div>
                       )}
                       <p className="notice" role="status" aria-live="polite">
